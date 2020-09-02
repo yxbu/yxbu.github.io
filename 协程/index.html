@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="zh-CN" lang="zh-CN">
+<head>
+  <link href="https://gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="generator" content="Hugo 0.74.3" />
+
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>协程 &middot; Dawn</title>
+  <meta name="description" content="" />
+
+  
+  <link type="text/css" rel="stylesheet" href="https://yxbu.github.io/css/print.css" media="print">
+  <link type="text/css" rel="stylesheet" href="https://yxbu.github.io/css/poole.css">
+  <link type="text/css" rel="stylesheet" href="https://yxbu.github.io/css/syntax.css">
+  <link type="text/css" rel="stylesheet" href="https://yxbu.github.io/css/hyde.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Abril+Fatface|PT+Sans:400,400i,700">
+
+
+  
+  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="/apple-touch-icon-144-precomposed.png">
+  <link rel="shortcut icon" href="/favicon.png">
+
+  
+  
+</head>
+
+  <body class="theme-base-08 ">
+  <aside class="sidebar">
+  <div class="container sidebar-sticky">
+    <div class="sidebar-about">
+      <a href="https://yxbu.github.io/"><h1>Dawn</h1></a>
+      <p class="lead">
+        Welcome  
+      </p>
+    </div>
+
+    <nav>
+      <ul class="sidebar-nav">
+        <li><a href="https://yxbu.github.io/">Home</a> </li>
+        
+      </ul>
+    </nav>
+
+    <p>&copy; 2020. All rights reserved. </p>
+  </div>
+</aside>
+
+    <main class="content container">
+    <div class="post">
+  <h1>协程</h1>
+  <time datetime=2020-09-02T22:27:00&#43;0800 class="post-date">Wed, Sep 2, 2020</time>
+  <p>一 了解协程</p>
+<p>协程可以理解为一种用户态的轻量级线程, 切换由用户定义</p>
+<p>协程上下文切换很快, 因为不会陷入内核态</p>
+<p>协程拥有自己的寄存器上下文和栈, 协程调度切换时，将寄存器上下文和栈保存到其他地方，在切换回来的时候，恢复先前保存的寄存器上下文和栈</p>
+<p>优点：</p>
+<p>协程具有极高的执行效率 因为子程序切换不是线程切换，是由程序自身控制，因此协程没有线程切换的开销, 多线程的线程数量越多，协程的性能优势就越明显</p>
+<p>访问共享资源不需要多线程的锁机制, 因为只有一个线程, 也不存在同时写变量冲突, 所以在协程中控制共享资源无需加锁, 只需要判断状态就好了，执行效率比多线程高很多, 而且代码编写难度也可以相应降低</p>
+<p>以同步代码的方式写异步逻辑</p>
+<p>缺点：</p>
+<p>无法利用多核资源, 除非和多进程配合</p>
+<p>二 ucontext</p>
+<p>头文件&lt;ucontext.h&gt;定义了两个数据结构, mcontext_t(暂时用不到)和ucontext_t和四个函数, 可以被用来实现一个进程中的用户级线程(协程)切换</p>
+<p>ucontext_t 结构体至少拥有如下几个域</p>
+<pre><code>typedef struct ucontext {
+
+struct ucontext *uc_link;
+sigset_t uc_sigmask;
+stack_t uc_stack;
+mcontext_t uc_mcontext;
+...
+} ucontext_t;
+</code></pre>
+<p>uc_link指向后继上下文, 当前上下文运行终止时系统会恢复指向的上下文</p>
+<p>uc_sigmask为该上下文中的阻塞信号集合</p>
+<p>uc_stack为该上下文中使用的栈</p>
+<p>uc_mcontex保存上下文的特定机器, 包括调用线程的特定寄存器等等</p>
+<p>简而言之这个数据结构是用来保存上下文的</p>
+<pre><code>int getcontext(ucontext_t * ucp);
+</code></pre>
+<p>获取当前上下文, 初始化ucp结构体, 将当前上下文保存到ucp中
+成功返回0; 失败返回-1, 并设置errno</p>
+<pre><code>void makecontext(ucontext_t *ucp, void(*func)(), int argc, ...);
+</code></pre>
+<p>创建一个目标上下文 创建方式: (1) getcontext, (2) 指定分配给上下文的栈uc_stack.ss_sp, (3) 指定这块栈的大小uc_stack.ss_size, (4) 指定uc_stack.ss_flags, (5) 指定后继上下文uc_link</p>
+<p>协程运行时使用主协程划分的栈空间，而协程切回主线程时需要将该部分栈空间的内容copy到每个协程各自的一个空间缓存起来，因为主协程中划分的栈空间并不是只用于一个协程，而是会用于多个协程</p>
+<p>makecontext可以修改通过getcontext初始化得到的上下文, (必须先调用getcontext), 然后为ucp指定一个栈空间ucp-&gt;stack, 设置后继的上下文ucp-&gt;uc_link</p>
+<p>当上下文通过setcontext或者swapcontext激活后, 执行func函数(argc为后续的参数个数, 可变参数). 当func执行返回后, 继承的上下文被激活(ucp-&gt;uc_link), 如果为NULL, 则线程退出</p>
+<pre><code>int setcontext(const ucontext_t *ucp)
+</code></pre>
+<p>设置当前的上下文为ucp(激活ucp)</p>
+<p>ucp来自getcontext, 那么上下文恢复至ucp</p>
+<p>ucp来自makecontext, 那么将会调用makecontext函数的第二个参数指向的函数func, 如果func返回, 则恢复至ucp-&gt;uc_link指定的后继上下文, 如果该ucp中的uc_link为NULL, 那么线程退出</p>
+<p>成功不返回, 失败返回-1, 设置errno</p>
+<pre><code>int swapcontext(ucontext_t *oucp, ucontext_t *ucp)
+</code></pre>
+<p>切换上下文</p>
+<p>保存当前上下文至oucp, 激活ucp上下文(先执行makecontext指定的ucp入口函数, 而后会执行ucp-&gt;uc_link指向的后继上下文)</p>
+<p>成功不返回, 失败返回-1, 设置errno</p>
+
+</div>
+
+
+    </main>
+
+    
+      
+    
+  </body>
+</html>

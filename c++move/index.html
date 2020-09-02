@@ -54,16 +54,19 @@
   <time datetime=2019-10-02T10:54:05&#43;0800 class="post-date">Wed, Oct 2, 2019</time>
   <p>1.右值引用</p>
 <p>比如下面的代码：</p>
-<p>String Fun(){</p>
-<pre><code>String str = &quot;hello world&quot;;
+<pre><code>String Fun(){
+
+String str = &quot;hello world&quot;;
 
 return str;
+
+}
 </code></pre>
-<p>}
-str为临时对象，然后调用Stringd的拷贝构造函数，将临时对象的值赋值给String,这种拷贝是完全没有必要的，如果堆内存很大，那么这个拷贝构造的代价会很大，带来了额外的性能损耗。</p>
+<p>str为临时对象，然后调用Stringd的拷贝构造函数，将临时对象的值赋值给String,这种拷贝是完全没有必要的，如果堆内存很大，那么这个拷贝构造的代价会很大，带来了额外的性能损耗。</p>
 <p>为了避免链式对象的拷贝构造，我们可以使用右值引用拷贝的方式来实现：</p>
-<p>MyString&amp; operator=(MyString&amp;&amp; other){</p>
-<pre><code>    cout &lt;&lt; &quot;MyString&amp; operator=(const MyString&amp;&amp; other)&quot; &lt;&lt; endl;
+<pre><code>MyString&amp; operator=(MyString&amp;&amp; other){
+
+    cout &lt;&lt; &quot;MyString&amp; operator=(const MyString&amp;&amp; other)&quot; &lt;&lt; endl;
 
     if (this != &amp;other)
 
@@ -78,8 +81,9 @@ str为临时对象，然后调用Stringd的拷贝构造函数，将临时对象�
     }
 
     return *this;
+
+}
 </code></pre>
-<p>}</p>
 <p>上面的代码只是进行了指针权限的转移，而没有额外的性能消耗。</p>
 <p>总结：</p>
 <p>C++11中引入了右值引用和移动语义，可以避免无谓的复制，提高了程序的性能，右值引用标记为T&amp;&amp;。</p>

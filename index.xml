@@ -11,6 +11,55 @@
     
     
     <item>
+      <title>协程</title>
+      <link>https://yxbu.github.io/%E5%8D%8F%E7%A8%8B/</link>
+      <pubDate>Wed, 02 Sep 2020 22:27:00 +0800</pubDate>
+      
+      <guid>https://yxbu.github.io/%E5%8D%8F%E7%A8%8B/</guid>
+      <description>一 了解协程
+协程可以理解为一种用户态的轻量级线程, 切换由用户定义
+协程上下文切换很快, 因为不会陷入内核态
+协程拥有自己的寄存器上下文和栈, 协程调度切换时，将寄存器上下文和栈保存到其他地方，在切换回来的时候，恢复先前保存的寄存器上下文和栈
+优点：
+协程具有极高的执行效率 因为子程序切换不是线程切换，是由程序自身控制，因此协程没有线程切换的开销, 多线程的线程数量越多，协程的性能优势就越明显
+访问共享资源不需要多线程的锁机制, 因为只有一个线程, 也不存在同时写变量冲突, 所以在协程中控制共享资源无需加锁, 只需要判断状态就好了，执行效率比多线程高很多, 而且代码编写难度也可以相应降低
+以同步代码的方式写异步逻辑
+缺点：
+无法利用多核资源, 除非和多进程配合
+二 ucontext
+头文件&amp;lt;ucontext.h&amp;gt;定义了两个数据结构, mcontext_t(暂时用不到)和ucontext_t和四个函数, 可以被用来实现一个进程中的用户级线程(协程)切换
+ucontext_t 结构体至少拥有如下几个域
+typedef struct ucontext { struct ucontext *uc_link; sigset_t uc_sigmask; stack_t uc_stack; mcontext_t uc_mcontext; ... } ucontext_t;  uc_link指向后继上下文, 当前上下文运行终止时系统会恢复指向的上下文
+uc_sigmask为该上下文中的阻塞信号集合
+uc_stack为该上下文中使用的栈
+uc_mcontex保存上下文的特定机器, 包括调用线程的特定寄存器等等
+简而言之这个数据结构是用来保存上下文的
+int getcontext(ucontext_t * ucp);  获取当前上下文, 初始化ucp结构体, 将当前上下文保存到ucp中 成功返回0; 失败返回-1, 并设置errno
+void makecontext(ucontext_t *ucp, void(*func)(), int argc, .</description>
+    </item>
+    
+    <item>
+      <title>C&#43;&#43;move</title>
+      <link>https://yxbu.github.io/c&#43;&#43;move/</link>
+      <pubDate>Wed, 02 Oct 2019 10:54:05 +0800</pubDate>
+      
+      <guid>https://yxbu.github.io/c&#43;&#43;move/</guid>
+      <description>1.右值引用
+比如下面的代码：
+String Fun(){ String str = &amp;quot;hello world&amp;quot;; return str; }  str为临时对象，然后调用Stringd的拷贝构造函数，将临时对象的值赋值给String,这种拷贝是完全没有必要的，如果堆内存很大，那么这个拷贝构造的代价会很大，带来了额外的性能损耗。
+为了避免链式对象的拷贝构造，我们可以使用右值引用拷贝的方式来实现：
+MyString&amp;amp; operator=(MyString&amp;amp;&amp;amp; other){ cout &amp;lt;&amp;lt; &amp;quot;MyString&amp;amp; operator=(const MyString&amp;amp;&amp;amp; other)&amp;quot; &amp;lt;&amp;lt; endl; if (this != &amp;amp;other) { m_nLen = other.m_nLen; m_pData = other.m_pData; other.m_pData = NULL; } return *this; }  上面的代码只是进行了指针权限的转移，而没有额外的性能消耗。
+总结：
+C++11中引入了右值引用和移动语义，可以避免无谓的复制，提高了程序的性能，右值引用标记为T&amp;amp;&amp;amp;。
+（1）左值和右值是独立于它们的类型，右值引用类型可能是左值也可能是右值
+（2）auto&amp;amp;&amp;amp;或函数参数类型的自动推导的T&amp;amp;&amp;amp;是一个未定的引用类型，它可能是左值引用，也可能是右值引用，取决于初始化的值类型
+（3）所有的右值引用叠加到右值引用上仍然是一个右值引用，其它引用叠加都为坐值引用，当T&amp;amp;&amp;amp;为模版参数时，输入左值，它会变为左值引用，输入右值则变为具名的右值引用
+（4）编译器会将已命名的右值引用视为左值，而将未命名的右值视为右值
+2.move语意
+我们知道移动语义是通过右值引用来匹配临时值的，那么，普通的左值是否也能借组移动语义来优化性能呢？C++11为了解决这个问题，提供了std::move()方法来将左值转换为右值，从而方便应用移动语义。move是将对象的状态或者所有权从一个对象转移到另一个对象，只是转义，没有内存拷贝。</description>
+    </item>
+    
+    <item>
       <title>About</title>
       <link>https://yxbu.github.io/about/</link>
       <pubDate>Thu, 22 Aug 2019 02:31:25 +0800</pubDate>
